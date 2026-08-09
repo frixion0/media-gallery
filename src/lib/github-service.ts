@@ -192,6 +192,80 @@ export async function updateGalleryData(
 }
 
 /**
+ * Delete media items from GitHub (gallery-data.json + media/ files). Does NOT touch Mega.
+ */
+export async function deleteMediaFromGitHub(
+  itemIds: string[]
+): Promise<{ success: boolean; deleted: string[]; error?: string }> {
+  const octokit = getOctokit();
+  if (!octokit) {
+    return { success: false, deleted: [], error: "GitHub API is not configured" };
+  }
+
+  try {
+    const galleryData = await getGalleryData();
+    if (!galleryData) {
+      return { success: false, deleted: [], error: "Could not fetch gallery data." };
+    }
+
+    const { items: currentItems, sha: currentSha } = galleryData;
+    const idSet = new Set(itemIds);
+
+    // Find items to delete and extract filenames from their src URLs
+    const toDelete = currentItems.filter((item) => idSet.has(item.id));
+    const remainingItems = currentItems.filter((item) => !idSet.has(item.id));
+
+    // Delete each file from GitHub media/ folder
+    const deletedNames: string[] = [];
+    for (const item of toDelete) {
+      const fileName = item.src.split("/").pop();
+      if (!fileName) continue;
+
+      try {
+        const { data } = await octokit.rest.repos.getContent({
+          owner: GITHUB_OWNER,
+          repo: GITHUB_REPO,
+          path: `media/${fileName}`,
+        });
+        if ("sha" in data) {
+          await octokit.rest.repos.deleteFile({
+            owner: GITHUB_OWNER,
+            repo: GITHUB_REPO,
+            path: `media/${fileName}`,
+            message: `Delete ${fileName} from media gallery`,
+            sha: data.sha,
+            branch: "main",
+          });
+          deletedNames.push(fileName);
+        }
+      } catch (err) {
+        console.error(`Failed to delete media/${fileName}:`, err);
+        // Continue deleting other files even if one fails
+      }
+    }
+
+    // Update gallery-data.json with remaining items
+    const jsonContent = JSON.stringify(remainingItems, null, 2);
+    const jsonBase64 = Buffer.from(jsonContent).toString("base64");
+
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: "gallery-data.json",
+      message: `Remove ${toDelete.length} media item(s) from gallery`,
+      content: jsonBase64,
+      sha: currentSha || undefined,
+      branch: "main",
+    });
+
+    return { success: true, deleted: deletedNames };
+  } catch (error) {
+    console.error("Error deleting media:", error);
+    return { success: false, deleted: [], error: "Failed to delete media." };
+  }
+}
+
+/**
  * Upload media files to GitHub and optionally Mega.
  * Handles duplicate detection.
  */

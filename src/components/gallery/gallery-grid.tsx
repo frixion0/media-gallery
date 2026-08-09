@@ -2,15 +2,16 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Play } from "lucide-react";
+import { Play, Download, Trash2 } from "lucide-react";
 import type { MediaItem } from "@/lib/github-service";
 
 interface GalleryGridProps {
   items: MediaItem[];
   onOpen: (index: number) => void;
+  onDelete: (itemIds: string[]) => void;
 }
 
-export function GalleryGrid({ items, onOpen }: GalleryGridProps) {
+export function GalleryGrid({ items, onOpen, onDelete }: GalleryGridProps) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 sm:py-32 text-gray-500 px-4">
@@ -32,6 +33,25 @@ export function GalleryGrid({ items, onOpen }: GalleryGridProps) {
       </div>
     );
   }
+
+  const handleDownload = (e: React.MouseEvent, item: MediaItem) => {
+    e.stopPropagation();
+    const link = document.createElement("a");
+    link.href = item.src;
+    link.download = item.alt;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDelete = (e: React.MouseEvent, item: MediaItem) => {
+    e.stopPropagation();
+    if (confirm(`Delete "${item.alt}" from gallery?\n(Mega backup will be kept)`)) {
+      onDelete([item.id]);
+    }
+  };
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
@@ -73,7 +93,6 @@ export function GalleryGrid({ items, onOpen }: GalleryGridProps) {
                 preload="metadata"
                 playsInline
               />
-              {/* Play icon overlay for videos */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm border border-white/20 transition-transform duration-300 group-hover:scale-110">
                   <Play className="w-4 h-4 sm:w-6 sm:h-6 text-white ml-0.5 sm:ml-1" fill="white" />
@@ -82,24 +101,56 @@ export function GalleryGrid({ items, onOpen }: GalleryGridProps) {
             </div>
           )}
 
-          {/* VIDEO badge - smaller on mobile */}
+          {/* VIDEO badge */}
           {item.type === "video" && (
             <span className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white rounded sm:rounded-md shadow-lg">
               Video
             </span>
           )}
 
-          {/* Hover overlay - always visible on touch, hover on desktop */}
+          {/* Action buttons - top right, visible on hover (desktop) or always (mobile) */}
+          <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 sm:transition-opacity duration-200 sm:opacity-0 z-10">
+            <button
+              onClick={(e) => handleDownload(e, item)}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors border border-white/10"
+              aria-label="Download"
+            >
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+            <button
+              onClick={(e) => handleDelete(e, item)}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-red-400 hover:bg-red-600 hover:text-white transition-colors border border-white/10"
+              aria-label="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+          </div>
+
+          {/* Mobile: always show a subtle action hint */}
+          <div className="sm:hidden absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none opacity-100" />
+          <div className="sm:hidden absolute bottom-0 left-0 right-0 p-2 flex justify-end gap-1.5 pointer-events-auto">
+            <button
+              onClick={(e) => handleDownload(e, item)}
+              className="w-7 h-7 rounded-lg bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 active:bg-black/80"
+              aria-label="Download"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={(e) => handleDelete(e, item)}
+              className="w-7 h-7 rounded-lg bg-black/50 backdrop-blur-sm flex items-center justify-center text-red-400 active:bg-red-600 active:text-white"
+              aria-label="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Hover overlay (desktop only) */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
           <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
             <p className="text-white text-xs sm:text-sm font-medium truncate">
               {item.alt}
             </p>
-          </div>
-
-          {/* Mobile tap hint ripple effect */}
-          <div className="absolute inset-0 sm:hidden pointer-events-none">
-            <div className="absolute inset-0 border-2 border-white/0 group-active:border-white/30 rounded-lg sm:rounded-xl transition-colors duration-150" />
           </div>
         </motion.div>
       ))}

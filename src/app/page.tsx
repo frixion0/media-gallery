@@ -43,6 +43,24 @@ export default function GalleryPage() {
     setLightboxOpen(false);
   };
 
+  const handleDelete = useCallback(async (itemIds: string[]) => {
+    try {
+      const res = await fetch("/api/gallery/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchGallery();
+      } else {
+        alert(data.error || "Delete failed.");
+      }
+    } catch {
+      alert("Network error during delete.");
+    }
+  }, [fetchGallery]);
+
   return (
     <div className="min-h-[100dvh] bg-gray-900 text-white flex flex-col">
       {/* Header - optimized for mobile with safe area support */}
@@ -98,7 +116,7 @@ export default function GalleryPage() {
             ))}
           </div>
         ) : (
-          <GalleryGrid items={items} onOpen={handleOpen} />
+          <GalleryGrid items={items} onOpen={handleOpen} onDelete={handleDelete} />
         )}
       </main>
 
