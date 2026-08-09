@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { GalleryGrid } from "@/components/gallery/gallery-grid";
 import { UploadButton } from "@/components/gallery/upload-button";
+import { ImportFromMega } from "@/components/gallery/import-from-mega";
 import { GalleryLightbox } from "@/components/gallery/gallery-lightbox";
 import type { MediaItem } from "@/lib/github-service";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,12 +57,20 @@ export default function GalleryPage() {
                 : `${items.length} item${items.length !== 1 ? "s" : ""}`}
               {dataSource === "sample" && !isLoading && (
                 <span className="ml-2 text-amber-400/80 text-xs">
-                  (demo mode — configure GitHub to use your own media)
+                  (demo mode)
+                </span>
+              )}
+              {dataSource === "github" && !isLoading && (
+                <span className="ml-2 text-emerald-400/60 text-xs">
+                  GitHub + Mega sync active
                 </span>
               )}
             </p>
           </div>
-          <UploadButton onUploadComplete={fetchGallery} />
+          <div className="flex items-center gap-3">
+            <ImportFromMega onImportComplete={fetchGallery} />
+            <UploadButton onUploadComplete={fetchGallery} />
+          </div>
         </div>
       </header>
 
@@ -83,7 +92,7 @@ export default function GalleryPage() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-white/5 py-4 text-center text-xs text-gray-600">
-        Media Gallery — Powered by GitHub
+        Media Gallery — GitHub + Mega.nz Dual Storage
       </footer>
 
       {/* Lightbox */}

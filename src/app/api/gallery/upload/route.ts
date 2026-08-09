@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { uploadMedia, fileToBase64 } from "@/lib/github-service";
+import { uploadMedia } from "@/lib/github-service";
+import { uploadToMega } from "@/lib/mega-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
       name: string;
       blob: Blob;
       type: "image" | "video";
+      buffer?: Buffer;
     }[] = [];
 
     for (const file of files) {
@@ -36,27 +38,57 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Convert to buffer for Mega upload
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
       preparedFiles.push({
         name: file.name,
         blob: file,
         type: isVideo ? "video" : "image",
+        buffer,
       });
     }
 
-    const result = await uploadMedia(preparedFiles);
+    // 1. Upload to GitHub (with duplicate check)
+    const ghResult = await uploadMedia(
+      preparedFiles.map((f) => ({ name: f.name, blob: f.blob, type: f.type }))
+    );
 
-    if (result.success) {
-      return NextResponse.json({
-        success: true,
-        items: result.items,
-        uploadedCount: preparedFiles.length,
-      });
-    } else {
+    if (!ghResult.success) {
       return NextResponse.json(
-        { success: false, error: result.error },
+        { success: false, error: ghResult.error },
         { status: 500 }
       );
     }
+
+    // 2. Upload to Mega in parallel (non-blocking, best-effort)
+    const megaResults = await Promise.allSettled(
+      preparedFiles
+        .filter((f) => !ghResult.skipped?.includes(f.name))
+        .map(async (f) => {
+          if (!f.buffer) return { name: f.name, success: false };
+          return { name: f.name, ...(await uploadToMega(f.buffer, f.name)) };
+        })
+    );
+
+    const megaSuccesses = megaResults.filter(
+      (r) => r.status === "fulfilled" && r.value.success
+    ).length;
+    const megaFailures = megaResults.filter(
+      (r) => r.status === "fulfilled" && !r.value.success
+    ).length;
+
+    return NextResponse.json({
+      success: true,
+      items: ghResult.items,
+      uploadedCount: preparedFiles.length - (ghResult.skipped?.length || 0),
+      skipped: ghResult.skipped || [],
+      mega: {
+        uploaded: megaSuccesses,
+        failed: megaFailures,
+      },
+    });
   } catch (error) {
     console.error("POST /api/gallery/upload error:", error);
     return NextResponse.json(

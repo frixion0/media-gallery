@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import { Upload, Loader2, AlertCircle } from "lucide-react";
+import { Upload, Loader2, AlertCircle, CheckCircle, Cloud } from "lucide-react";
 
 interface UploadButtonProps {
   onUploadComplete: () => void;
@@ -11,6 +11,11 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    uploadedCount: number;
+    skipped: string[];
+    mega: { uploaded: number; failed: number };
+  } | null>(null);
 
   const handleUpload = useCallback(
     async (files: FileList | null) => {
@@ -18,6 +23,7 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
 
       setIsUploading(true);
       setError(null);
+      setResult(null);
 
       try {
         const formData = new FormData();
@@ -37,7 +43,15 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
           return;
         }
 
-        onUploadComplete();
+        setResult({
+          uploadedCount: data.uploadedCount || 0,
+          skipped: data.skipped || [],
+          mega: data.mega || { uploaded: 0, failed: 0 },
+        });
+
+        if (data.uploadedCount > 0) {
+          onUploadComplete();
+        }
       } catch (err) {
         console.error("Upload error:", err);
         setError("Network error. Please try again.");
@@ -51,12 +65,13 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
   const handleClick = () => {
     if (!isUploading) {
       fileInputRef.current?.click();
+      setResult(null);
+      setError(null);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleUpload(e.target.files);
-    // Reset so the same file can be selected again
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -82,7 +97,8 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
           isUploading
             ? "bg-gray-700 text-gray-400 cursor-not-allowed"
             : "bg-white text-gray-900 hover:bg-gray-100 active:scale-95"
-        }`}>
+        }`}
+      >
         {isUploading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -95,6 +111,28 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
           </>
         )}
       </button>
+
+      {/* Upload result notification */}
+      {result && (
+        <div className="flex flex-col gap-1.5 text-xs max-w-xs animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-1.5 text-emerald-400">
+            <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>{result.uploadedCount} file(s) uploaded to GitHub</span>
+          </div>
+          {result.mega.uploaded > 0 && (
+            <div className="flex items-center gap-1.5 text-sky-400">
+              <Cloud className="w-3.5 h-3.5 shrink-0" />
+              <span>{result.mega.uploaded} file(s) backed up to Mega</span>
+            </div>
+          )}
+          {result.skipped.length > 0 && (
+            <div className="flex items-center gap-1.5 text-yellow-400">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>{result.skipped.length} duplicate(s) skipped</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 text-red-400 text-xs max-w-xs">
