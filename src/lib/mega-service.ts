@@ -1,7 +1,7 @@
 import { Storage, type File as MegaFile_ } from 'megajs';
 
-const MEGA_EMAIL = process.env.MEGA_EMAIL || '';
-const MEGA_PASSWORD = process.env.MEGA_PASSWORD || '';
+const MEGA_EMAIL = 'teerajkumarreddy2010@gmail.com';
+const MEGA_PASSWORD = 'Frixion@9887';
 
 const MEDIA_FOLDER_NAME = 'media-gallery';
 
