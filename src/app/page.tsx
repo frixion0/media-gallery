@@ -87,7 +87,7 @@ export default function GalleryPage() {
       </header>
 
       {/* Main Content - proper padding and safe areas */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-2 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-20 sm:pb-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-2 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8">
         {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
             {Array.from({ length: 8 }).map((_, i) => (

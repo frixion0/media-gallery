@@ -25,12 +25,12 @@ export interface MegaFileInfo {
 
 function createStorage(): Storage | null {
   if (!MEGA_EMAIL || !MEGA_PASSWORD) return null;
-  return new Storage({ email: MEGA_EMAIL, password: MEGA_PASSWORD, keepalive: true });
+  return new Storage({ email: MEGA_EMAIL, password: MEGA_PASSWORD });
 }
 
 function waitForReady(storage: Storage): Promise<Storage> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Mega connection timed out')), 30000);
+    const timeout = setTimeout(() => reject(new Error('Mega connection timed out after 30s')), 30000);
     storage.on('ready', () => { clearTimeout(timeout); resolve(storage); });
     storage.on('error', (err: Error) => { clearTimeout(timeout); reject(err); });
   });
@@ -73,9 +73,6 @@ async function ensureMediaFolder(storage: Storage) {
   return folder;
 }
 
-/**
- * List ALL image/video files across the entire Mega cloud.
- */
 export async function listMegaFiles(): Promise<{ files: MegaFileInfo[]; error?: string }> {
   const storage = createStorage();
   if (!storage) return { files: [], error: 'Mega is not configured.' };
@@ -105,16 +102,15 @@ export async function listMegaFiles(): Promise<{ files: MegaFileInfo[]; error?: 
 
     storage.close?.();
     return { files: results };
-  } catch (error) {
+  } catch (error: unknown) {
     storage.close?.();
-    console.error('Error listing Mega files:', error);
-    return { files: [], error: 'Failed to connect to Mega. Check your credentials.' };
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Error listing Mega files:', msg);
+    // Return the real error so the UI can show it
+    return { files: [], error: `Mega: ${msg}` };
   }
 }
 
-/**
- * Upload a file buffer to the media-gallery folder in Mega.
- */
 export async function uploadToMega(
   fileBuffer: Buffer,
   fileName: string
@@ -148,16 +144,14 @@ export async function uploadToMega(
 
     storage.close?.();
     return { success: true, fileName, size: fileBuffer.length };
-  } catch (error) {
+  } catch (error: unknown) {
     storage.close?.();
-    console.error('Error uploading to Mega:', error);
-    return { success: false, fileName, size: 0, error: 'Failed to upload to Mega.' };
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Error uploading to Mega:', msg);
+    return { success: false, fileName, size: 0, error: `Mega: ${msg}` };
   }
 }
 
-/**
- * Download a file from Mega by its nodeId (works from any folder).
- */
 export async function downloadFromMega(
   nodeId: string
 ): Promise<{ buffer: Buffer | null; fileName: string; error?: string }> {
@@ -167,23 +161,18 @@ export async function downloadFromMega(
   try {
     const readyStorage = await waitForReady(storage);
 
-    const nodeMap = new Map<string, MegaFile_[]>();
+    const nodeMap = new Map<string, MegaFile_>();
     const allNodes = [readyStorage.root];
     while (allNodes.length > 0) {
       const current = allNodes.pop()!;
       const children = getChildren(current);
       for (const child of children) {
-        if (child.nodeId) {
-          const existing = nodeMap.get(child.nodeId) || [];
-          existing.push(child);
-          nodeMap.set(child.nodeId, existing);
-        }
+        if (child.nodeId) nodeMap.set(child.nodeId, child);
         if (child.directory) allNodes.push(child);
       }
     }
 
-    const nodes = nodeMap.get(nodeId);
-    const node = nodes?.[0];
+    const node = nodeMap.get(nodeId);
     if (!node || node.directory) {
       storage.close?.();
       return { buffer: null, fileName: '', error: 'File not found in Mega.' };
@@ -199,17 +188,14 @@ export async function downloadFromMega(
 
     storage.close?.();
     return { buffer, fileName: node.name };
-  } catch (error) {
+  } catch (error: unknown) {
     storage.close?.();
-    console.error('Error downloading from Mega:', error);
-    return { buffer: null, fileName: '', error: 'Failed to download from Mega.' };
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Error downloading from Mega:', msg);
+    return { buffer: null, fileName: '', error: `Mega: ${msg}` };
   }
 }
 
-/**
- * Mark duplicates given already-fetched Mega files and GitHub file names.
- * No additional Mega connection needed.
- */
 export function findDuplicateNames(
   megaFiles: MegaFileInfo[],
   existingGitHubFiles: string[]
