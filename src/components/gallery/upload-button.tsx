@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Upload, Loader2, AlertCircle, CheckCircle, Cloud, X } from "lucide-react";
 
 interface UploadButtonProps {
@@ -16,6 +16,17 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
     skipped: string[];
     mega: { uploaded: number; failed: number };
   } | null>(null);
+
+  // Auto-dismiss notifications after 5s
+  useEffect(() => {
+    if (result || error) {
+      const t = setTimeout(() => {
+        setResult(null);
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(t);
+    }
+  }, [result, error]);
 
   const handleUpload = useCallback(
     async (files: FileList | null) => {
@@ -77,10 +88,7 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
     }
   };
 
-  const dismissResult = () => {
-    setResult(null);
-    setError(null);
-  };
+  const hasNotification = !!(result || error);
 
   return (
     <>
@@ -99,7 +107,7 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
         onClick={handleClick}
         disabled={isUploading}
         className={
-          `sm:hidden relative p-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-white/5 ${
+          `relative sm:hidden p-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-white/5 ${
           isUploading
             ? "bg-gray-700 text-gray-400 cursor-not-allowed"
             : "bg-white text-gray-900 active:scale-90"
@@ -112,7 +120,6 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
         ) : (
           <Upload className="w-5 h-5" />
         )}
-        {/* Uploading progress ring */}
         {isUploading && (
           <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
         )}
@@ -143,10 +150,13 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
         )}
       </button>
 
-      {/* Upload result notification - mobile toast style */}
-      {(result || error) && (
-        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:max-w-xs sm:relative z-50">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 shadow-2xl shadow-black/50 animate-in fade-in slide-in-from-bottom-4 sm:slide-in-from-top-2">
+      {/* Notification toast */}
+      {hasNotification && (
+        <div className="fixed bottom-20 sm:bottom-auto sm:relative sm:top-full sm:mt-2 sm:max-w-xs z-50 left-3 right-3 sm:left-auto sm:right-0 pointer-events-none">
+          <div
+            className="bg-gray-800 border border-gray-700 rounded-xl p-3 shadow-2xl shadow-black/50 pointer-events-auto transition-all duration-300 opacity-100 translate-y-0"
+            style={{ animation: 'slideUp 0.25s ease-out' }}
+          >
             {result && (
               <div className="flex flex-col gap-1.5 text-xs">
                 <div className="flex items-center justify-between">
@@ -155,7 +165,7 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
                     <span>{result.uploadedCount} file(s) uploaded to GitHub</span>
                   </div>
                   <button
-                    onClick={dismissResult}
+                    onClick={() => setResult(null)}
                     className="p-0.5 rounded hover:bg-gray-700 text-gray-500 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -180,7 +190,7 @@ export function UploadButton({ onUploadComplete }: UploadButtonProps) {
                 <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span className="flex-1">{error}</span>
                 <button
-                  onClick={dismissResult}
+                  onClick={() => setError(null)}
                   className="p-0.5 rounded hover:bg-gray-700 text-gray-500 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />

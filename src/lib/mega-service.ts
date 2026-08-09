@@ -20,17 +20,17 @@ export interface MegaFileInfo {
   size: number;
   type: 'image' | 'video';
   nodeId: string;
-  path: string; // e.g. "/Photos/vacation.jpg" or "/beach.png"
+  path: string;
 }
 
 function createStorage(): Storage | null {
   if (!MEGA_EMAIL || !MEGA_PASSWORD) return null;
-  return new Storage({ email: MEGA_EMAIL, password: MEGA_PASSWORD });
+  return new Storage({ email: MEGA_EMAIL, password: MEGA_PASSWORD, keepalive: true });
 }
 
 function waitForReady(storage: Storage): Promise<Storage> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Mega connection timed out')), 20000);
+    const timeout = setTimeout(() => reject(new Error('Mega connection timed out')), 30000);
     storage.on('ready', () => { clearTimeout(timeout); resolve(storage); });
     storage.on('error', (err: Error) => { clearTimeout(timeout); reject(err); });
   });
@@ -40,9 +40,6 @@ function getChildren(node: unknown): MegaFile_[] {
   return (node as { children?: MegaFile_[] }).children || [];
 }
 
-/**
- * Recursively walk all folders in Mega and collect media files.
- */
 function walkForMedia(node: MegaFile_, parentPath: string, results: MegaFileInfo[]): void {
   const children = getChildren(node);
   const currentPath = parentPath === '/' ? `/${node.name}` : `${parentPath}/${node.name}`;
@@ -65,13 +62,9 @@ function walkForMedia(node: MegaFile_, parentPath: string, results: MegaFileInfo
   }
 }
 
-/**
- * Find or create the media-gallery folder in Mega root (used for uploads).
- */
 async function ensureMediaFolder(storage: Storage) {
   const root = storage.root;
   const children = getChildren(root);
-
   let folder = children.find((c) => c.name === MEDIA_FOLDER_NAME && c.directory);
   if (!folder) {
     folder = storage.mkdir(MEDIA_FOLDER_NAME);
@@ -92,7 +85,6 @@ export async function listMegaFiles(): Promise<{ files: MegaFileInfo[]; error?: 
     const root = readyStorage.root;
     const results: MegaFileInfo[] = [];
 
-    // Scan root-level files
     const rootChildren = getChildren(root);
     for (const child of rootChildren) {
       if (child.directory) {
@@ -175,19 +167,23 @@ export async function downloadFromMega(
   try {
     const readyStorage = await waitForReady(storage);
 
-    // Build a flat lookup map of nodeId -> node across the entire cloud
-    const nodeMap = new Map<string, MegaFile_>();
+    const nodeMap = new Map<string, MegaFile_[]>();
     const allNodes = [readyStorage.root];
     while (allNodes.length > 0) {
       const current = allNodes.pop()!;
       const children = getChildren(current);
       for (const child of children) {
-        if (child.nodeId) nodeMap.set(child.nodeId, child);
+        if (child.nodeId) {
+          const existing = nodeMap.get(child.nodeId) || [];
+          existing.push(child);
+          nodeMap.set(child.nodeId, existing);
+        }
         if (child.directory) allNodes.push(child);
       }
     }
 
-    const node = nodeMap.get(nodeId);
+    const nodes = nodeMap.get(nodeId);
+    const node = nodes?.[0];
     if (!node || node.directory) {
       storage.close?.();
       return { buffer: null, fileName: '', error: 'File not found in Mega.' };
@@ -211,19 +207,17 @@ export async function downloadFromMega(
 }
 
 /**
- * Check for duplicate files between GitHub and Mega.
+ * Mark duplicates given already-fetched Mega files and GitHub file names.
+ * No additional Mega connection needed.
  */
-export async function checkDuplicates(
+export function findDuplicateNames(
+  megaFiles: MegaFileInfo[],
   existingGitHubFiles: string[]
-): Promise<{ duplicateNames: Set<string>; megaFileNames: Set<string>; error?: string }> {
-  const { files, error } = await listMegaFiles();
-  if (error) return { duplicateNames: new Set(), megaFileNames: new Set(), error };
-
-  const megaFileNames = new Set(files.map((f) => f.name));
-  const gitHubFileNames = new Set(existingGitHubFiles);
-  const duplicateNames = new Set<string>();
-  for (const name of megaFileNames) {
-    if (gitHubFileNames.has(name)) duplicateNames.add(name);
+): Set<string> {
+  const gitHubSet = new Set(existingGitHubFiles);
+  const duplicates = new Set<string>();
+  for (const f of megaFiles) {
+    if (gitHubSet.has(f.name)) duplicates.add(f.name);
   }
-  return { duplicateNames, megaFileNames };
+  return duplicates;
 }
