@@ -4,27 +4,35 @@ import { getGitHubMediaFileNames } from "@/lib/github-service";
 
 export async function GET() {
   try {
-    // Single Mega connection — fetch files once
     const { files, error } = await listMegaFiles();
 
     if (error) {
-      return NextResponse.json({ files: [], error }, { status: 200 });
+      return NextResponse.json({ files: [], error, totalSizeBytes: 0 }, { status: 200 });
     }
 
-    // Get GitHub file names for duplicate checking (no second Mega call)
     const githubFileNames = await getGitHubMediaFileNames();
     const duplicateNames = findDuplicateNames(files, githubFileNames);
 
-    const filesWithStatus = files.map((f) => ({
-      ...f,
-      alreadyInGitHub: duplicateNames.has(f.name),
-    }));
+    // Only return files NOT already in GitHub
+    const newFiles = files
+      .filter((f) => !duplicateNames.has(f.name))
+      .map((f) => ({
+        ...f,
+        alreadyInGitHub: false,
+      }));
 
-    return NextResponse.json({ files: filesWithStatus });
+    const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
+
+    return NextResponse.json({
+      files: newFiles,
+      totalInMega: files.length,
+      totalSizeBytes: totalSize,
+      alreadyTransferred: files.length - newFiles.length,
+    });
   } catch (error) {
     console.error("GET /api/mega/list error:", error);
     return NextResponse.json(
-      { files: [], error: "Failed to list Mega files." },
+      { files: [], error: "Failed to list Mega files.", totalSizeBytes: 0 },
       { status: 500 }
     );
   }

@@ -12,6 +12,8 @@ export interface MediaItem {
   type: "image" | "video";
   alt: string;
   megaBackup?: boolean;
+  favourite?: boolean;
+  size?: number;
 }
 
 function getOctokit() {
@@ -188,6 +190,64 @@ export async function updateGalleryData(
   } catch (error) {
     console.error("Error updating gallery-data.json:", error);
     return { success: false, error: "Failed to update gallery data." };
+  }
+}
+
+/**
+ * Toggle favourite status on items and update gallery-data.json.
+ */
+export async function toggleFavourite(
+  itemId: string
+): Promise<{ success: boolean; error?: string }> {
+  const octokit = getOctokit();
+  if (!octokit) return { success: false, error: "GitHub API not configured" };
+
+  try {
+    const galleryData = await getGalleryData();
+    if (!galleryData) return { success: false, error: "Could not fetch gallery data." };
+
+    const { items, sha } = galleryData;
+    const updated = items.map((item) =>
+      item.id === itemId ? { ...item, favourite: !item.favourite } : item
+    );
+
+    const jsonBase64 = Buffer.from(JSON.stringify(updated, null, 2)).toString("base64");
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: "gallery-data.json",
+      message: `Toggle favourite ${itemId}`,
+      content: jsonBase64,
+      sha: sha || undefined,
+      branch: "main",
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error toggling favourite:", error);
+    return { success: false, error: "Failed to toggle favourite." };
+  }
+}
+
+/**
+ * Get total size of all media files in GitHub media/ folder.
+ */
+export async function getGitHubMediaTotalSize(): Promise<number> {
+  const octokit = getOctokit();
+  if (!octokit) return 0;
+
+  try {
+    const { data } = await octokit.rest.repos.getContent({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: "media",
+    });
+    if (Array.isArray(data)) {
+      return data.reduce((sum, f) => sum + (f.size || 0), 0);
+    }
+    return 0;
+  } catch {
+    return 0;
   }
 }
 
