@@ -1,8 +1,8 @@
 import { Octokit } from "octokit";
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
-const GITHUB_OWNER = process.env.GITHUB_OWNER || "";
-const GITHUB_REPO = process.env.GITHUB_REPO || "";
+const GITHUB_OWNER = "frixion0";
+const GITHUB_REPO = "media-gallery";
 
 export interface MediaItem {
   id: string;
@@ -13,7 +13,7 @@ export interface MediaItem {
 }
 
 function getOctokit() {
-  if (!GITHUB_TOKEN || GITHUB_OWNER === "YOUR_GITHUB_USERNAME" || !GITHUB_REPO) {
+  if (!GITHUB_TOKEN) {
     return null;
   }
   return new Octokit({ auth: GITHUB_TOKEN });
@@ -24,7 +24,7 @@ export function getRawBaseUrl(): string {
 }
 
 export function isGitHubConfigured(): boolean {
-  return !!(GITHUB_TOKEN && GITHUB_OWNER !== "YOUR_GITHUB_USERNAME" && GITHUB_REPO);
+  return !!GITHUB_TOKEN;
 }
 
 /**

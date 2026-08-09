@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         existingNameSet.add(fileName);
         imported.push(fileName);
 
-        const rawUrl = `https://raw.githubusercontent.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/main/media/${fileName}`;
+        const rawUrl = `https://raw.githubusercontent.com/frixion0/media-gallery/main/media/${fileName}`;
         newItems.push({
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
           src: rawUrl,
