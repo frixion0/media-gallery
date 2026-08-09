@@ -5,99 +5,114 @@ const MEGA_PASSWORD = 'Frixion@9887';
 
 const MEDIA_FOLDER_NAME = 'media-gallery';
 
+const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif']);
+const VIDEO_EXTS = new Set(['mp4', 'webm', 'mov', 'avi', 'mkv']);
+
+function classifyFile(name: string): 'image' | 'video' | 'other' {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  if (IMAGE_EXTS.has(ext)) return 'image';
+  if (VIDEO_EXTS.has(ext)) return 'video';
+  return 'other';
+}
+
 export interface MegaFileInfo {
   name: string;
   size: number;
-  type: 'image' | 'video' | 'other';
+  type: 'image' | 'video';
   nodeId: string;
+  path: string; // e.g. "/Photos/vacation.jpg" or "/beach.png"
 }
 
-/**
- * Create an authenticated Mega Storage instance.
- */
 function createStorage(): Storage | null {
   if (!MEGA_EMAIL || !MEGA_PASSWORD) return null;
   return new Storage({ email: MEGA_EMAIL, password: MEGA_PASSWORD });
 }
 
-/**
- * Wait for the storage to be ready and return it.
- */
 function waitForReady(storage: Storage): Promise<Storage> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error('Mega connection timed out'));
-    }, 20000);
-    storage.on('ready', () => {
-      clearTimeout(timeout);
-      resolve(storage);
-    });
-    storage.on('error', (err: Error) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
+    const timeout = setTimeout(() => reject(new Error('Mega connection timed out')), 20000);
+    storage.on('ready', () => { clearTimeout(timeout); resolve(storage); });
+    storage.on('error', (err: Error) => { clearTimeout(timeout); reject(err); });
   });
 }
 
+function getChildren(node: unknown): MegaFile_[] {
+  return (node as { children?: MegaFile_[] }).children || [];
+}
+
 /**
- * Find or create the media-gallery folder in Mega root.
+ * Recursively walk all folders in Mega and collect media files.
+ */
+function walkForMedia(node: MegaFile_, parentPath: string, results: MegaFileInfo[]): void {
+  const children = getChildren(node);
+  const currentPath = parentPath === '/' ? `/${node.name}` : `${parentPath}/${node.name}`;
+
+  for (const child of children) {
+    if (child.directory) {
+      walkForMedia(child, currentPath, results);
+    } else {
+      const type = classifyFile(child.name);
+      if (type !== 'other') {
+        results.push({
+          name: child.name,
+          size: child.size || 0,
+          type: type as 'image' | 'video',
+          nodeId: child.nodeId || '',
+          path: currentPath,
+        });
+      }
+    }
+  }
+}
+
+/**
+ * Find or create the media-gallery folder in Mega root (used for uploads).
  */
 async function ensureMediaFolder(storage: Storage) {
   const root = storage.root;
-  const children: MegaFile_[] = (root as unknown as { children?: MegaFile_[] }).children || [];
+  const children = getChildren(root);
 
-  let folder = children.find(
-    (c) => c.name === MEDIA_FOLDER_NAME && c.directory
-  );
-
+  let folder = children.find((c) => c.name === MEDIA_FOLDER_NAME && c.directory);
   if (!folder) {
     folder = storage.mkdir(MEDIA_FOLDER_NAME);
-    // Wait for creation
     await new Promise((r) => setTimeout(r, 1500));
   }
-
   return folder;
 }
 
 /**
- * List all media files from the media-gallery folder in Mega.
+ * List ALL image/video files across the entire Mega cloud.
  */
-export async function listMegaFiles(): Promise<{
-  files: MegaFileInfo[];
-  error?: string;
-}> {
+export async function listMegaFiles(): Promise<{ files: MegaFileInfo[]; error?: string }> {
   const storage = createStorage();
-  if (!storage) {
-    return { files: [], error: 'Mega is not configured. Set MEGA_EMAIL and MEGA_PASSWORD in .env' };
-  }
+  if (!storage) return { files: [], error: 'Mega is not configured.' };
 
   try {
     const readyStorage = await waitForReady(storage);
-    const folder = await ensureMediaFolder(readyStorage);
-    const children: MegaFile_[] = (folder as unknown as { children?: MegaFile_[] }).children || [];
+    const root = readyStorage.root;
+    const results: MegaFileInfo[] = [];
 
-    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'];
-    const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv'];
-
-    const files: MegaFileInfo[] = children
-      .filter((c) => !c.directory)
-      .map((c) => {
-        const ext = c.name.split('.').pop()?.toLowerCase() || '';
-        let type: 'image' | 'video' | 'other' = 'other';
-        if (imageExts.includes(ext)) type = 'image';
-        else if (videoExts.includes(ext)) type = 'video';
-
-        return {
-          name: c.name,
-          size: c.size || 0,
-          type,
-          nodeId: c.nodeId || '',
-        };
-      })
-      .filter((f) => f.type !== 'other');
+    // Scan root-level files
+    const rootChildren = getChildren(root);
+    for (const child of rootChildren) {
+      if (child.directory) {
+        walkForMedia(child, `/${child.name}`, results);
+      } else {
+        const type = classifyFile(child.name);
+        if (type !== 'other') {
+          results.push({
+            name: child.name,
+            size: child.size || 0,
+            type: type as 'image' | 'video',
+            nodeId: child.nodeId || '',
+            path: `/${child.name}`,
+          });
+        }
+      }
+    }
 
     storage.close?.();
-    return { files };
+    return { files: results };
   } catch (error) {
     storage.close?.();
     console.error('Error listing Mega files:', error);
@@ -106,33 +121,28 @@ export async function listMegaFiles(): Promise<{
 }
 
 /**
- * Upload a file buffer to Mega media-gallery folder.
+ * Upload a file buffer to the media-gallery folder in Mega.
  */
 export async function uploadToMega(
   fileBuffer: Buffer,
   fileName: string
 ): Promise<{ success: boolean; fileName: string; size: number; error?: string }> {
   const storage = createStorage();
-  if (!storage) {
-    return { success: false, fileName, size: 0, error: 'Mega is not configured' };
-  }
+  if (!storage) return { success: false, fileName, size: 0, error: 'Mega is not configured' };
 
   try {
     const readyStorage = await waitForReady(storage);
     const folder = await ensureMediaFolder(readyStorage);
-    const children: MegaFile_[] = (folder as unknown as { children?: MegaFile_[] }).children || [];
+    const children = getChildren(folder);
 
-    // Duplicate check by name + size
     const duplicate = children.find(
       (c) => c.name === fileName && c.size === fileBuffer.length && !c.directory
     );
-
     if (duplicate) {
       storage.close?.();
       return { success: true, fileName, size: fileBuffer.length };
     }
 
-    // Upload using Buffer
     const upload = readyStorage.upload(
       { name: fileName, size: fileBuffer.length },
       folder
@@ -154,23 +164,31 @@ export async function uploadToMega(
 }
 
 /**
- * Download a file from Mega by nodeId.
+ * Download a file from Mega by its nodeId (works from any folder).
  */
 export async function downloadFromMega(
   nodeId: string
 ): Promise<{ buffer: Buffer | null; fileName: string; error?: string }> {
   const storage = createStorage();
-  if (!storage) {
-    return { buffer: null, fileName: '', error: 'Mega is not configured' };
-  }
+  if (!storage) return { buffer: null, fileName: '', error: 'Mega is not configured' };
 
   try {
     const readyStorage = await waitForReady(storage);
-    const folder = await ensureMediaFolder(readyStorage);
-    const children: MegaFile_[] = (folder as unknown as { children?: MegaFile_[] }).children || [];
-    const node = children.find((c) => c.nodeId === nodeId);
 
-    if (!node) {
+    // Build a flat lookup map of nodeId -> node across the entire cloud
+    const nodeMap = new Map<string, MegaFile_>();
+    const allNodes = [readyStorage.root];
+    while (allNodes.length > 0) {
+      const current = allNodes.pop()!;
+      const children = getChildren(current);
+      for (const child of children) {
+        if (child.nodeId) nodeMap.set(child.nodeId, child);
+        if (child.directory) allNodes.push(child);
+      }
+    }
+
+    const node = nodeMap.get(nodeId);
+    if (!node || node.directory) {
       storage.close?.();
       return { buffer: null, fileName: '', error: 'File not found in Mega.' };
     }
@@ -178,7 +196,6 @@ export async function downloadFromMega(
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = [];
       const stream = node.download();
-
       stream.on('data', (chunk: Buffer) => chunks.push(chunk));
       stream.on('end', () => resolve(Buffer.concat(chunks)));
       stream.on('error', (err: Error) => reject(err));
@@ -198,26 +215,15 @@ export async function downloadFromMega(
  */
 export async function checkDuplicates(
   existingGitHubFiles: string[]
-): Promise<{
-  duplicateNames: Set<string>;
-  megaFileNames: Set<string>;
-  error?: string;
-}> {
+): Promise<{ duplicateNames: Set<string>; megaFileNames: Set<string>; error?: string }> {
   const { files, error } = await listMegaFiles();
-
-  if (error) {
-    return { duplicateNames: new Set(), megaFileNames: new Set(), error };
-  }
+  if (error) return { duplicateNames: new Set(), megaFileNames: new Set(), error };
 
   const megaFileNames = new Set(files.map((f) => f.name));
   const gitHubFileNames = new Set(existingGitHubFiles);
-
   const duplicateNames = new Set<string>();
   for (const name of megaFileNames) {
-    if (gitHubFileNames.has(name)) {
-      duplicateNames.add(name);
-    }
+    if (gitHubFileNames.has(name)) duplicateNames.add(name);
   }
-
   return { duplicateNames, megaFileNames };
 }

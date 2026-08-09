@@ -8,6 +8,7 @@ interface MegaFile {
   size: number;
   type: "image" | "video";
   nodeId: string;
+  path: string;
   alreadyInGitHub: boolean;
 }
 
@@ -180,7 +181,7 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
                 <div className="flex flex-col items-center justify-center py-16 text-gray-500">
                   <Cloud className="w-12 h-12 mb-3 opacity-30" />
                   <p className="text-sm font-medium">No media files found</p>
-                  <p className="text-xs mt-1">Upload files to your Mega &apos;media-gallery&apos; folder first</p>
+                  <p className="text-xs mt-1">Scans all folders in your Mega cloud</p>
                 </div>
               ) : (
                 <>
@@ -235,9 +236,10 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{file.name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-gray-500">
-                                {formatFileSize(file.size)}
+                              <span className="text-xs text-gray-500 truncate max-w-[180px]" title={file.path}>
+                                {file.path}
                               </span>
+                              <span className="text-[10px] text-gray-600">{formatFileSize(file.size)}</span>
                               <span
                                 className={`
                                   text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded
