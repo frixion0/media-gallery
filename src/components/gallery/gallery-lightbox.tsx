@@ -52,6 +52,10 @@ export function GalleryLightbox({
       video={{ controls: true, autoPlay: true, muted: false, loop: true }}
       styles={{
         container: { backgroundColor: "rgba(0, 0, 0, 0.95)" },
+        button: { filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.9))" },
+        // Larger tap targets on mobile for navigation
+        navigationPrev: { top: "50%", left: 0, bottom: "auto" },
+        navigationNext: { top: "50%", right: 0, bottom: "auto" },
       }}
     />
   );

@@ -108,15 +108,25 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
 
   return (
     <>
+      {/* Mobile: Icon-only button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 shadow-lg shadow-white/5 bg-gray-800 text-gray-200 hover:bg-gray-700 border border-gray-700 hover:border-gray-600"
+        className="sm:hidden p-2.5 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 active:scale-90 transition-all"
+        aria-label="Import from Mega"
+      >
+        <HardDrive className="w-5 h-5" />
+      </button>
+
+      {/* Desktop: Full button with text */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 shadow-lg shadow-white/5 bg-gray-800 text-gray-200 hover:bg-gray-700 border border-gray-700 hover:border-gray-600"
       >
         <HardDrive className="w-4 h-4" />
         Import from Mega
       </button>
 
-      {/* Slide-over panel */}
+      {/* Panel - Full screen on mobile, slide-over on desktop */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex">
           {/* Backdrop */}
@@ -126,26 +136,37 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
           />
 
           {/* Panel */}
-          <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl animate-in slide-in-from-right">
+          <div className="absolute inset-x-0 bottom-0 sm:inset-auto sm:right-0 sm:top-0 sm:bottom-0 w-full sm:max-w-md bg-gray-900 sm:border-l border-t sm:border-t-0 border-gray-800 flex flex-col shadow-2xl rounded-t-2xl sm:rounded-none max-h-[92vh] sm:max-h-none sm:my-0 animate-in slide-in-from-bottom-4 sm:slide-in-from-right">
+            {/* Drag handle for mobile */}
+            <div className="sm:hidden flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-700" />
+            </div>
+
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-              <div className="flex items-center gap-3">
-                <Cloud className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-lg font-semibold">Import from Mega</h2>
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-800">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <Cloud className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-emerald-400" />
+                <h2 className="text-base sm:text-lg font-semibold">Import from Mega</h2>
+                {files.length > 0 && (
+                  <span className="text-[10px] sm:text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded-full">
+                    {files.length}
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
+                className="p-2 rounded-xl hover:bg-gray-800 active:bg-gray-700 transition-colors -mr-1"
+                aria-label="Close panel"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
               {/* Error message */}
               {error && (
-                <div className="mb-4 flex items-start gap-2 p-3 bg-red-950/50 border border-red-800/50 rounded-lg text-red-300 text-sm">
+                <div className="mb-3 sm:mb-4 flex items-start gap-2 p-3 bg-red-950/50 border border-red-800/50 rounded-lg sm:rounded-xl text-red-300 text-sm">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -153,7 +174,7 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
 
               {/* Import result */}
               {importResult && (
-                <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800/50 rounded-lg">
+                <div className="mb-3 sm:mb-4 p-3 bg-emerald-950/50 border border-emerald-800/50 rounded-lg sm:rounded-xl">
                   <div className="flex items-center gap-2 text-emerald-300 text-sm font-medium mb-1">
                     <Check className="w-4 h-4" />
                     Import complete
@@ -173,30 +194,37 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
 
               {/* Loading state */}
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-                  <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-gray-500">
+                  <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 animate-spin mb-3" />
                   <p className="text-sm">Connecting to Mega...</p>
                 </div>
               ) : files.length === 0 && !error ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-                  <Cloud className="w-12 h-12 mb-3 opacity-30" />
+                <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-gray-500">
+                  <Cloud className="w-10 h-10 sm:w-12 sm:h-12 mb-3 opacity-30" />
                   <p className="text-sm font-medium">No media files found</p>
-                  <p className="text-xs mt-1">Scans all folders in your Mega cloud</p>
+                  <p className="text-xs mt-1 text-center">Scans all folders in your Mega cloud</p>
                 </div>
               ) : (
                 <>
-                  {/* Select all button */}
+                  {/* Select all + count bar */}
                   {selectableFiles.length > 0 && (
-                    <button
-                      onClick={selectAllNonDuplicate}
-                      className="mb-3 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
-                    >
-                      {allSelected ? "Deselect all" : `Select all new (${selectableFiles.length})`}
-                    </button>
+                    <div className="flex items-center justify-between mb-3">
+                      <button
+                        onClick={selectAllNonDuplicate}
+                        className="text-xs text-emerald-400 hover:text-emerald-300 active:text-emerald-200 transition-colors py-1"
+                      >
+                        {allSelected ? "Deselect all" : `Select all new (${selectableFiles.length})`}
+                      </button>
+                      {selected.size > 0 && (
+                        <span className="text-[10px] sm:text-xs text-gray-500">
+                          {selected.size} selected
+                        </span>
+                      )}
+                    </div>
                   )}
 
                   {/* File list */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {files.map((file) => {
                       const isDuplicate = file.alreadyInGitHub;
                       const isSelected = selected.has(file.nodeId);
@@ -206,20 +234,20 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
                           key={file.nodeId}
                           onClick={() => !isDuplicate && toggleFile(file.nodeId)}
                           className={`
-                            flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer
+                            flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.99]
                             ${
                               isDuplicate
                                 ? "border-gray-800 bg-gray-900/50 opacity-50 cursor-not-allowed"
                                 : isSelected
                                   ? "border-emerald-600 bg-emerald-950/30"
-                                  : "border-gray-800 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800/50"
+                                  : "border-gray-800 bg-gray-900/50 hover:border-gray-600 active:border-gray-500"
                             }
                           `}
                         >
-                          {/* Checkbox */}
+                          {/* Checkbox - larger touch target on mobile */}
                           <div
                             className={`
-                              w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all
+                              w-5 h-5 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all
                               ${
                                 isSelected
                                   ? "bg-emerald-500 border-emerald-500"
@@ -232,17 +260,17 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
                             {isSelected && <Check className="w-3 h-3 text-white" />}
                           </div>
 
-                          {/* File info */}
+                          {/* File info - more compact on mobile */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{file.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-gray-500 truncate max-w-[180px]" title={file.path}>
+                            <p className="text-sm font-medium truncate leading-tight">{file.name}</p>
+                            <div className="flex items-center gap-1.5 sm:gap-2 mt-1 flex-wrap">
+                              <span className="text-[11px] sm:text-xs text-gray-500 truncate max-w-[120px] sm:max-w-[180px]" title={file.path}>
                                 {file.path}
                               </span>
                               <span className="text-[10px] text-gray-600">{formatFileSize(file.size)}</span>
                               <span
                                 className={`
-                                  text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded
+                                  text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded
                                   ${
                                     file.type === "video"
                                       ? "bg-red-900/50 text-red-400"
@@ -253,8 +281,8 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
                                 {file.type}
                               </span>
                               {isDuplicate && (
-                                <span className="text-[10px] font-medium text-yellow-500">
-                                  Already in GitHub
+                                <span className="text-[9px] sm:text-[10px] font-medium text-yellow-500">
+                                  In GitHub
                                 </span>
                               )}
                             </div>
@@ -267,21 +295,22 @@ export function ImportFromMega({ onImportComplete }: ImportFromMegaProps) {
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-5 py-4 border-t border-gray-800 flex items-center gap-3">
+            {/* Footer - sticky bottom action bar */}
+            <div className="px-4 sm:px-5 py-3 sm:py-4 border-t border-gray-800 flex items-center gap-2 sm:gap-3 bg-gray-900 sm:bg-transparent">
               <button
                 onClick={fetchMegaFiles}
                 disabled={isLoading || isImporting}
-                className="p-2.5 rounded-lg hover:bg-gray-800 transition-colors text-gray-400 hover:text-gray-200 disabled:opacity-40"
+                className="p-2.5 rounded-xl hover:bg-gray-800 active:bg-gray-700 transition-colors text-gray-400 hover:text-gray-200 disabled:opacity-40"
                 title="Refresh"
+                aria-label="Refresh file list"
               >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`w-4.5 h-4.5 sm:w-4 sm:h-4 ${isLoading ? "animate-spin" : ""}`} />
               </button>
               <button
                 onClick={handleImport}
                 disabled={selected.size === 0 || isImporting}
                 className={`
-                  flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all
+                  flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl sm:rounded-lg font-medium text-sm transition-all
                   ${
                     selected.size === 0 || isImporting
                       ? "bg-gray-800 text-gray-500 cursor-not-allowed"
