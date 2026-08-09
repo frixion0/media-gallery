@@ -82,9 +82,9 @@ export default function GalleryPage() {
   return (
     <div className="min-h-[100dvh] bg-gray-900 text-white flex flex-col">
       <header className="sticky top-0 z-40 bg-gray-900/90 backdrop-blur-xl border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-0 min-w-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-12 sm:h-16">
+            <div className="flex items-center gap-2.5 sm:gap-0 min-w-0">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shrink-0">
                 <ImageIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
               </div>
@@ -117,11 +117,11 @@ export default function GalleryPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-2 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {isLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-square rounded-lg sm:rounded-xl bg-gray-800" />
+              <Skeleton key={i} className="aspect-square rounded-xl sm:rounded-2xl bg-gray-800" />
             ))}
           </div>
         ) : (

@@ -50,16 +50,15 @@ export function GalleryGrid({ items, onOpen, onDelete, onFavourite }: GalleryGri
   };
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
       {items.map((item, index) => (
         <motion.div
           key={item.id}
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.5) }}
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
-          className="relative group cursor-pointer overflow-hidden rounded-lg sm:rounded-xl bg-gray-800 aspect-square"
+          className="relative group cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl bg-gray-800 aspect-square"
           onClick={() => onOpen(index)}
           role="button"
           tabIndex={0}
@@ -74,28 +73,31 @@ export function GalleryGrid({ items, onOpen, onDelete, onFavourite }: GalleryGri
             <div className="relative w-full h-full">
               <video src={item.src} className="absolute inset-0 w-full h-full object-cover" muted preload="metadata" playsInline />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm border border-white/20">
-                  <Play className="w-4 h-4 sm:w-6 sm:h-6 text-white ml-0.5 sm:ml-1" fill="white" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm border border-white/20">
+                  <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white ml-0.5" fill="white" />
                 </div>
               </div>
             </div>
           )}
 
-          {/* VIDEO badge */}
+          {/* Dark gradient at bottom for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 pointer-events-none" />
+
+          {/* VIDEO badge - top left */}
           {item.type === "video" && (
-            <span className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white rounded sm:rounded-md shadow-lg">
+            <span className="absolute top-2 left-2 sm:top-3 sm:left-3 px-2 py-0.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-red-600 text-white rounded-md shadow-lg">
               Video
             </span>
           )}
 
-          {/* Favourite heart - top left */}
+          {/* Favourite heart - bottom left, above the name */}
           <button
             onClick={(e) => handleFavourite(e, item)}
-            className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all"
+            className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center transition-all border border-white/10"
             aria-label={item.favourite ? "Remove from favourites" : "Add to favourites"}
           >
             <Heart
-              className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-200 ${
+              className={`w-4 h-4 sm:w-4.5 sm:h-4.5 transition-all duration-200 ${
                 item.favourite
                   ? "text-red-500 fill-red-500 drop-shadow-lg"
                   : "text-white/70 hover:text-white"
@@ -104,30 +106,18 @@ export function GalleryGrid({ items, onOpen, onDelete, onFavourite }: GalleryGri
           </button>
 
           {/* Action buttons - top right, hover on desktop, always on mobile */}
-          <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 sm:transition-opacity duration-200 z-10">
-            <button onClick={(e) => handleDownload(e, item)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors border border-white/10" aria-label="Download">
-              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 flex gap-1.5 sm:gap-1.5 opacity-100 sm:opacity-0 group-hover:opacity-100 sm:transition-opacity duration-200 z-10">
+            <button onClick={(e) => handleDownload(e, item)} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 active:bg-black/80 transition-colors border border-white/10" aria-label="Download">
+              <Download className="w-4 h-4 sm:w-4 sm:h-4" />
             </button>
-            <button onClick={(e) => handleDelete(e, item)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-red-400 hover:bg-red-600 hover:text-white transition-colors border border-white/10" aria-label="Delete">
-              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </button>
-          </div>
-
-          {/* Mobile bottom actions */}
-          <div className="sm:hidden absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
-          <div className="sm:hidden absolute bottom-0 left-0 right-0 p-2 flex justify-end gap-1.5 pointer-events-auto">
-            <button onClick={(e) => handleDownload(e, item)} className="w-7 h-7 rounded-lg bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 active:bg-black/80" aria-label="Download">
-              <Download className="w-3.5 h-3.5" />
-            </button>
-            <button onClick={(e) => handleDelete(e, item)} className="w-7 h-7 rounded-lg bg-black/50 backdrop-blur-sm flex items-center justify-center text-red-400 active:bg-red-600 active:text-white" aria-label="Delete">
-              <Trash2 className="w-3.5 h-3.5" />
+            <button onClick={(e) => handleDelete(e, item)} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-red-400 hover:bg-red-600 hover:text-white active:bg-red-600 active:text-white transition-colors border border-white/10" aria-label="Delete">
+              <Trash2 className="w-4 h-4 sm:w-4 sm:h-4" />
             </button>
           </div>
 
-          {/* Hover overlay (desktop) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-            <p className="text-white text-xs sm:text-sm font-medium truncate">{item.alt}</p>
+          {/* Name label - bottom right area */}
+          <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 left-10 sm:left-12 pointer-events-none">
+            <p className="text-white text-[11px] sm:text-sm font-medium truncate drop-shadow-lg">{item.alt}</p>
           </div>
         </motion.div>
       ))}
