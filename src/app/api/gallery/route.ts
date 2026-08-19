@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGalleryData, getGitHubMediaTotalSize } from "@/lib/github-service";
+import { getGalleryData, getGitHubMediaTotalSize, syncMediaFolder } from "@/lib/github-service";
 
 const SAMPLE_MEDIA = [
   { id: "sample-1", src: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80", type: "image" as const, alt: "Mountain landscape" },
@@ -14,11 +14,18 @@ const SAMPLE_MEDIA = [
 
 export async function GET() {
   try {
+    // Sync: pick up any files uploaded directly to GitHub media/ folder
+    const syncResult = await syncMediaFolder();
+
+    // Fetch gallery data (fresh after sync)
     const galleryData = await getGalleryData();
 
     if (galleryData) {
+      // Use synced items if sync added new files, otherwise use gallery data
+      const items = syncResult.added > 0 ? syncResult.items : galleryData.items;
+
       // Sort: favourites first, then original order
-      const sorted = [...galleryData.items].sort((a, b) => {
+      const sorted = [...items].sort((a, b) => {
         if (a.favourite && !b.favourite) return -1;
         if (!a.favourite && b.favourite) return 1;
         return 0;
@@ -31,6 +38,7 @@ export async function GET() {
         items: sorted,
         source: "github",
         totalSizeBytes: totalSize,
+        synced: syncResult.added,
       });
     }
 

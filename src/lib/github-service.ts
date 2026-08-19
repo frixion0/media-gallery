@@ -326,7 +326,78 @@ export async function deleteMediaFromGitHub(
 }
 
 /**
- * Upload media files to GitHub and optionally Mega.
+ * Sync the media/ folder with gallery-data.json.
+ * Any file in media/ that is NOT in gallery-data.json gets added automatically.
+ * This handles files uploaded directly to GitHub (e.g. via web UI).
+ */
+export async function syncMediaFolder(): Promise<{ added: number; items: MediaItem[] }> {
+  const octokit = getOctokit();
+  if (!octokit) return { added: 0, items: [] };
+
+  try {
+    // Get all files in media/ folder
+    const { data: mediaFiles } = await octokit.rest.repos.getContent({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: "media",
+    });
+
+    if (!Array.isArray(mediaFiles)) return { added: 0, items: [] };
+
+    // Get current gallery data
+    const galleryData = await getGalleryData();
+    const currentItems: MediaItem[] = galleryData?.items || [];
+    const currentSha: string = galleryData?.sha || "";
+
+    // Build set of filenames already in gallery-data.json (from src URL)
+    const existingNames = new Set(
+      currentItems.map((item) => item.src.split("/").pop()).filter(Boolean)
+    );
+
+    // Find files in media/ that are not in gallery-data.json
+    const newItems: MediaItem[] = [];
+    for (const file of mediaFiles) {
+      if (file.type !== "file") continue;
+      if (existingNames.has(file.name)) continue;
+
+      const isVideo = file.name.endsWith(".mp4") || file.name.endsWith(".webm") || file.name.endsWith(".mov");
+      const rawUrl = `${getRawBaseUrl()}/media/${file.name}`;
+      const itemId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+      newItems.push({
+        id: itemId,
+        src: rawUrl,
+        type: isVideo ? "video" : "image",
+        alt: file.name.replace(/\.[^/.]+$/, ""),
+        size: file.size,
+      });
+    }
+
+    if (newItems.length === 0) return { added: 0, items: currentItems };
+
+    // Update gallery-data.json with new items
+    const updatedItems = [...currentItems, ...newItems];
+    const jsonBase64 = Buffer.from(JSON.stringify(updatedItems, null, 2)).toString("base64");
+
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: "gallery-data.json",
+      message: `Sync ${newItems.length} new file(s) from media/ folder`,
+      content: jsonBase64,
+      sha: currentSha || undefined,
+      branch: "main",
+    });
+
+    return { added: newItems.length, items: updatedItems };
+  } catch (error) {
+    console.error("Error syncing media folder:", error);
+    return { added: 0, items: [] };
+  }
+}
+
+/**
+ * Upload media files to GitHub only (no Mega).
  * Handles duplicate detection.
  */
 export async function uploadMedia(
