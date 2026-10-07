@@ -346,5 +346,26 @@
     "type": "image",
     "alt": "Screenshot_2026-09-26-22-08-51-146_com.instagram.lite",
     "size": 318982
+  },
+  {
+    "id": "1791384269881-4fe07lm",
+    "src": "https://raw.githubusercontent.com/frixion0/media-gallery/main/media/1791383863011.png",
+    "type": "image",
+    "alt": "1791383863011",
+    "size": 654685
+  },
+  {
+    "id": "1791384269881-5x4br1r",
+    "src": "https://raw.githubusercontent.com/frixion0/media-gallery/main/media/IMG-20261007-WA8939.jpg",
+    "type": "image",
+    "alt": "IMG-20261007-WA8939",
+    "size": 382613
+  },
+  {
+    "id": "1791384269881-8c66zbh",
+    "src": "https://raw.githubusercontent.com/frixion0/media-gallery/main/media/IMG_20261007_200811.jpg",
+    "type": "image",
+    "alt": "IMG_20261007_200811",
+    "size": 316371
   }
 ]
